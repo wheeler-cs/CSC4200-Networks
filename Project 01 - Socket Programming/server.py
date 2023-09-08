@@ -17,21 +17,20 @@ connection_socket.bind ((server_address, server_port))
 # Listen for incoming connections (max 5 clients in the queue)
 connection_socket.listen()
 
-print("Server is listening on", server_address)
+print("Server is listening on port", server_port)
 
 while True:
     # Wait for a client to connect
-    # Replace the following line with code to accept a client connection
+    connection, client_address = connection_socket.accept()
     
     # Print a message to indicate the client connection
-    # Replace the following line with appropriate logging
+    print ("Connection established with", client_address[0])
 
     # Handle client data
     while True:
         # Receive data from the client
-        # Replace the following line with code to receive data
-        # ensure you can receive long messages
-        
+        data_sent = connection.recv (1024)
+        print (data_sent)
         
         # Process and respond to the client's data
         # Replace the following line with your data processing logic
