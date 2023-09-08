@@ -18,20 +18,34 @@ except Exception as e:
     # Any interruption to connection process terminates program for safety
     print ("Unable to establish connection with server", server_address + ':' + str(server_port))
     print (f"Reason: {e}")
-    exit(1)
+    exit (1)
 
 while True:
     # Get user input
     message = input("Enter a message to send to the server (or 'exit' to quit): ")
+    if not message: # Do not send an empty message
+        continue
 
+    # Send the message to the server
+    try:
+        server_socket.sendall(message.encode ("utf-8")) # Encode w/ UTF-8 to send message as binary
+    except Exception:
+        print ("Server at", server_address, "is currently unreachable")
+        break
+
+    # Stop execution on issuing "exit" by user
     if message == "exit":
         break
-    # Send the message to the server
-    server_socket.sendall(message.encode ("utf-8"))
+
     # Receive and print the server's response
-    # Replace the following line with code to receive and print the response
-    # Make sure you are able to receive long messages
+    try:
+        server_message = (server_socket.recv (1024)).decode ("utf-8")
+    except Exception:
+        print ("Unable to receive data from server")
+        break
+    # BUG: When receiving large amounts of data, message is buffered causing queue to back up.
+    print (f"Response: {server_message}")
 
 # Close the client socket
-server_socket.shutdown()
+server_socket.shutdown(socket.SHUT_RDWR) # Prevent additional sending and receiving of data
 server_socket.close()
