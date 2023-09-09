@@ -28,13 +28,14 @@ while True:
 
     # Send the message to the server
     try:
-        server_socket.sendall(message.encode ("utf-8")) # Encode w/ UTF-8 to send message as binary
+        if message == "exit":
+            message_header = "dc"
+        else:
+            message_header = "m_size " + str (len (message))
+        server_socket.sendall (message_header.encode ("utf-8"))
+        server_socket.sendall (message.encode ("utf-8")) # Encode w/ UTF-8 to send message as binary
     except Exception:
         print ("Server at", server_address, "is currently unreachable")
-        break
-
-    # Stop execution on issuing "exit" by user
-    if message == "exit":
         break
 
     # Receive and print the server's response
