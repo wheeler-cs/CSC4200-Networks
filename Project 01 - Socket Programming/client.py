@@ -2,66 +2,67 @@ import socket
 
 from math import ceil
 
+# === Constants ====================================================================================
+
 LOCALHOST = "127.0.0.1"
 HOST = LOCALHOST
 PORT = 21250
-PACKET_SIZE = 1024
+PACKET_SIZE = 2048
 
-# Create a socket object
-connection = socket.socket()
 
-# Define the server address and port
-server_address = HOST
-server_port = PORT
+# === Function Definitions =========================================================================
 
-# Connect to the server
-try:
-    connection.connect((server_address, server_port))
-except Exception as e:
-    # Any interruption to connection process terminates program for safety
-    print ("Unable to establish connection with server", server_address + ':' + str(server_port))
-    print (f"Reason: {e}")
-    exit (1)
-
-while True:
-    # Get user input
-    message = input("Enter a message to send to the server (or 'exit' to quit): ")
-    if not message: # Do not send an empty message
-        continue
-
-    # Send the message to the server
+def establish_conn (target_host: str = "127.0.0.1", host_port: int = 9999) -> socket.socket:
+    # Create a socket object
+    new_socket = socket.socket()
     try:
-        # Send header with message metadata
-        header_size = -1
-        if message == "exit":
-            header_size = 0
-        else:
-            header_size = len (message)
-        message_header = "m_size " + str (header_size)
-        connection.sendall (message_header.encode ("utf-8"))
-        
-        # Send message to server
-        if message != "exit":
-            s_message = ""
-            connection.sendall (message.encode ("utf-8")) # Encode w/ UTF-8 to send message as binary
+        # Connect to the server
+        new_socket.connect (target_host, host_port)
+    except Exception:
+        return None
 
-            # Get length of the message server is sending
-            s_header = connection.recv (PACKET_SIZE)
-            header_args = s_header.split (' ')
-            for arg in enumerate (header_args):
-                if (arg[1] == "m_size"):
-                    s_message_len = int (header_args[arg[0] + 1])
-            for packets in range (0, (ceil (s_message_len / PACKET_SIZE))):
-                s_packet = connection.recv (PACKET_SIZE)
-                s_message += s_packet.decode ("utf-8")
-            
-            print ("Server responded with: ")
-            print (s_message)
+def create_header (text: str) -> str:
+    if (text == "") or (text == "exit") or (text is None):
+        return "m_size 0"
+    else:
+        return ("m_size " + len (text))
 
-    except Exception as e:
-        break
+def encode_text (text: str):
+    return (text.encode ("utf-8"))
+
+def decode_text (text) -> str:
+    return (text.decode ("utf-8"))
+    
+def forward_message (message: str, destination: socket.socket) -> bool:
+    header = create_header (message)
+    if (header == "m_size 0"):
+        return False
+    else:
+        send_rounds = ceil (len (message) / PACKET_SIZE)
+        try:
+            destination.send (encode_text (header))
+            for r in range (0, send_rounds):
+                destination.send ()
+        except Exception as e:
+            return False
+
+def echo_client (conn: socket.socket) -> None:
+    while True:
+        # Get user input
+        message = input("Enter a message to send to the server (or 'exit' to quit): ")
+        # Send the message to the server
+        forward_message (message, conn)
+        # Receive and print the server's response
 
 
-# Close the client socket
-connection.shutdown(socket.SHUT_RDWR) # Prevent additional sending and receiving of data
-connection.close()
+# === Main =========================================================================================
+
+if __name__ == "__main__":
+    s_connection = establish_conn (HOST, PORT)
+    if (s_connection is not None):
+        echo_client (s_connection)
+        # Close the client socket
+        s_connection.shutdown(socket.SHUT_RDWR) # Stop all incoming and outgoing transfers
+        s_connection.close()
+    else:
+        print ("Was unable to connect to", HOST, "on port", str (PORT))
