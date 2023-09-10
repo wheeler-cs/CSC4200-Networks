@@ -15,17 +15,15 @@ PACKET_SIZE = 2048
 def establish_conn (target_host: str = "127.0.0.1", host_port: int = 9999) -> socket.socket:
     # Create a socket object
     new_socket = socket.socket()
-    try:
-        # Connect to the server
-        new_socket.connect (target_host, host_port)
-    except Exception:
-        return None
+    # Connect to the server
+    new_socket.connect ((target_host, host_port))
+    return new_socket
 
 def create_header (text: str) -> str:
     if (text == "") or (text == "exit") or (text is None):
         return "m_size 0"
     else:
-        return ("m_size " + len (text))
+        return ("m_size " + str (len (text)))
 
 def encode_text (text: str):
     return (text.encode ("utf-8"))
@@ -38,13 +36,14 @@ def forward_message (message: str, destination: socket.socket) -> bool:
     if (header == "m_size 0"):
         return False
     else:
-        send_rounds = ceil (len (message) / PACKET_SIZE)
         try:
-            destination.send (encode_text (header))
-            for r in range (0, send_rounds):
-                destination.send ()
-        except Exception as e:
+            destination.sendall (encode_text (header))
+            destination.sendall (encode_text (message))
+        except Exception:
             return False
+
+def get_echo (echo_source: socket.socket) -> str:
+    return "A"
 
 def echo_client (conn: socket.socket) -> None:
     while True:
@@ -53,6 +52,8 @@ def echo_client (conn: socket.socket) -> None:
         # Send the message to the server
         forward_message (message, conn)
         # Receive and print the server's response
+        new_message = get_echo (conn)
+        print ("Message Returned:", new_message)
 
 
 # === Main =========================================================================================
