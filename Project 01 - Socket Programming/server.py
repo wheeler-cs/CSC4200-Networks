@@ -1,28 +1,34 @@
 import socket
 
-# Create a socket object
+HOST = "127.0.0.1"
+PORT = 9999
+LISTEN_QUEUE_SIZE = 5
 
+# Create a socket object
+conn_socket = socket.socket()
 
 # Define the server address and port
-
+server_address = HOST
+server_port = PORT
 
 # Bind the socket to the server address
-# Replace the following line with code to bind the socket
+conn_socket.bind ((server_address, server_port))
 
 # Listen for incoming connections (max 5 clients in the queue)
-# Replace the following line with code to listen for connections
-
+conn_socket.listen (LISTEN_QUEUE_SIZE)
 print("Server is listening on", server_address)
 
 while True:
     # Wait for a client to connect
-    # Replace the following line with code to accept a client connection
+    conn_info, addr_port = conn_socket.accept()
     
     # Print a message to indicate the client connection
-    # Replace the following line with appropriate logging
+    print ("Client", addr_port[0], "connected on port", str (addr_port[1]))
+    break
 
     # Handle client data
     while True:
+        pass
         # Receive data from the client
         # Replace the following line with code to receive data
         # ensure you can receive long messages
