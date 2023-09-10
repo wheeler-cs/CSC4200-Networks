@@ -1,4 +1,5 @@
 import socket
+from math import ceil
 
 HOST = "127.0.0.1"
 PORT = 9999
@@ -38,22 +39,41 @@ while True:
         # Receive data from the client
         message = ""
         try:
-            packet = conn_info.recv (PACKET_SIZE)
-            if not packet:
+            # Receive header from client
+            bin_header = conn_info.recv (PACKET_SIZE)
+            if not bin_header:
                 break
-            message = packet.decode ("utf-8")
+            header = bin_header.decode ("utf-8")
+            message_size = 0
+            # Ensure "header" is first field and get message size
+            parsed_header = header.split (' ')
+            if parsed_header[0] != "header": # First field has "header"
+                break
+            for i in enumerate (parsed_header): # Look for parameters (for loop for expandability)
+                if i[1] == "msg_size":
+                    message_size = int (parsed_header[i[0] + 1])
+            if (message_size <= 0): # Disconnect if message was empty
+                break
+            # Reconstruct message from individual packets
+            recv_rounds = ceil (message_size / PACKET_SIZE)
+            for round in range (0, recv_rounds):
+                packet = conn_info.recv (PACKET_SIZE)
+                message += packet.decode ("utf-8")
         except Exception:
             print ("Unable to receive message from client")
             break
 
         # Process and respond to the client's data
         if (len (message) > 0):
+            print (addr_port[0], "sent:")
             print (message)
         if (message == "exit"):
             break
         
         # Send the response back to the client
         try:
+            header = "header msg_size " + str (len (message))
+            conn_info.sendall (header.encode ("utf-8"))
             conn_info.sendall (message.encode ("utf-8"))
         except Exception:
             print ("Couldn't echo message back to client")
