@@ -22,7 +22,7 @@ except Exception:
 while True:
     # Get user input
     message = input("Enter a message to send to the server (or 'exit' to quit): ")
-        
+
     # Send the message to the server
     try:
         # Create header to send to server
@@ -61,6 +61,7 @@ while True:
             echo += packet.decode ("utf-8")
         print ("Server echoed:")
         print (echo)
+        print ("MSG SIZE:", len(echo))
     except Exception:
         print ("Couldn't receive echo from server")
         break
