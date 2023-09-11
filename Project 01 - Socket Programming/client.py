@@ -22,6 +22,8 @@ except Exception:
 while True:
     # Get user input
     message = input("Enter a message to send to the server (or 'exit' to quit): ")
+    if not message:
+        continue
 
     # Send the message to the server
     try:
