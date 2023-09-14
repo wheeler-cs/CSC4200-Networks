@@ -15,6 +15,9 @@ server_port = PORT
 # Connect to the server
 try:
     conn_socket.connect((server_address, server_port))
+except ConnectionRefusedError:
+    print ("IP address", HOST, "unreachable")
+    exit (1)
 except Exception:
     print ("Unable to connect to", HOST)
     exit (1)
@@ -31,6 +34,9 @@ while True:
         header = "header msg_size " + str (len (message))
         conn_socket.sendall (header.encode ("utf-8"))
         conn_socket.sendall (message.encode ("utf-8"))
+    except ConnectionResetError:
+        print ("Host server disconnected")
+        break
     except Exception:
         print ("Unable to send message to server")
         break
@@ -64,6 +70,9 @@ while True:
         print ("Server echoed:")
         print (echo)
         print ("MSG SIZE:", len(echo))
+    except ConnectionError:
+        print ("Unable to receive packets from host server")
+        break
     except Exception:
         print ("Couldn't receive echo from server")
         break

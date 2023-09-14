@@ -20,6 +20,12 @@ try:
     # Listen for incoming connections (max 5 clients in the queue)
     conn_socket.listen (LISTEN_QUEUE_SIZE)
     print("Server is listening on", server_address)
+except ConnectionAbortedError:
+    print ("Could not establish socket connection.")
+    exit (1)
+except ConnectionError:
+    print ("Error in creation of socket")
+    exit (1)
 except Exception:
     print ("Server could not be initialized due to issue with socket creation")
     exit (1)
@@ -28,6 +34,8 @@ while True:
     # Wait for a client to connect
     try:
         conn_info, addr_port = conn_socket.accept()
+    except ConnectionRefusedError:
+        print ("Remote client refused to connect")
     except Exception:
         print ("Something went wrong when trying to accept incoming connection")
     
@@ -59,6 +67,12 @@ while True:
             for round in range (0, recv_rounds):
                 packet = conn_info.recv (PACKET_SIZE)
                 message += packet.decode ("utf-8")
+        except ConnectionResetError:
+            print ("Remote client disconnected")
+            break
+        except ConnectionError:
+            print ("Client unable to deliver message")
+            break
         except Exception:
             print ("Unable to receive message from client")
             break
@@ -75,6 +89,8 @@ while True:
             header = "header msg_size " + str (len (message))
             conn_info.sendall (header.encode ("utf-8"))
             conn_info.sendall (message.encode ("utf-8"))
+        except ConnectionRefusedError:
+            print ("Unable to echo message back due to disconnect")
         except Exception:
             print ("Couldn't echo message back to client")
 
