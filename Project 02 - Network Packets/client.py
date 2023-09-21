@@ -3,6 +3,12 @@ import argparse
 import socket
 import struct
 
+# Packing and unpacking data in the struct package
+# var = struct.pack ("hhl", 5, 10, 15)
+# struct.unpack ("hhl", var)
+#
+# Fixed size for packet?
+
 def create_packet(version, header_length, service_type, payload):
     # TODO: Implement packet creation based on parameters
     # TODO: use the python struct module to create a fixed length header
