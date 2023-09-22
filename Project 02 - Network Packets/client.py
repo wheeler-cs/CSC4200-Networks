@@ -3,16 +3,20 @@ import argparse
 import socket
 import struct
 
-# Packing and unpacking data in the struct package
-# var = struct.pack ("hhl", 5, 10, 15)
-# struct.unpack ("hhl", var)
-#
-# Fixed size for packet?
 
-def create_packet(version, header_length, service_type, payload):
-    # TODO: Implement packet creation based on parameters
+def create_packet (version: int, header_length: int, service_type: int, payload: str) -> struct:
+    print (len (payload))
     # TODO: use the python struct module to create a fixed length header
-    # TODO: Fixed length header -> Version (1 byte), Header Length (1 byte), Service Type (1 byte), Payload Length (2 bytes)
+    # Packet Schema:
+    #    Version        (1 byte)
+    #    Header Length  (1 byte)
+    #    Service Type   (1 byte)
+    #    Payload Length (2 bytes)
+    #    Padding        (n bytes)
+    encode_str = "BBBh"
+    while (len (encode_str) < header_length): # Pad to get header to expected size
+        encode_str = encode_str + 'x'
+    packet = struct.pack (encode_str, version, header_length, service_type, len (payload)) # TODO: change len(payload) based on data being sent
     # TODO: payload -> variable length
     # TODO: depending on the service type, handle encoding of the different types of  payload.
     # TODO: service_type 1 = payload is int, service_type 2 = payload is float, service_type 3 = payload is string
@@ -33,7 +37,17 @@ if __name__ == '__main__':
     # TODO: Create and send packet using the create_packet function
     packet = create_packet(args.version, args.header_length, args.service_type, args.payload)
 
-    #TODO: connect to the server
+    # Connect to server
+    try: # Attempt socket creation and connecting to given host
+        client_socket = socket.socket()
+        client_socket.connect ((args.host, args.port))
+    except ConnectionRefusedError:
+        print ("Host {h}:{p} is unreachable".format (h = args.host, p = args.port))
+        exit (1)
+    except:
+        print ("Undefined error with host {h}:{p}".format (h = args.host, p = args.port))
+        exit(1)
+
 
     #TODO: send the packet
 
