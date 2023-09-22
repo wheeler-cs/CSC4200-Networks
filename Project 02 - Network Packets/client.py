@@ -1,27 +1,47 @@
-
 import argparse
 import socket
 import struct
 
 
+# Constants for program-wide usage
+# Service Types
+ST_INT   = 1
+ST_FLOAT = 2
+ST_STR   = 3
+
+
 def create_packet (version: int, header_length: int, service_type: int, payload: str) -> struct:
-    print (len (payload))
-    # TODO: use the python struct module to create a fixed length header
+    # Determine payload size based on service type
+    # Service Types:
+    #    1 = int    (4 bytes)
+    #    2 = float  (4 bytes)
+    #    3 = string (variable length)
+    payload_size = 0
+    if (service_type == ST_INT) or (service_type == ST_FLOAT):
+        payload_size = 4
+    elif (service_type == ST_STR):
+        payload_size = len (payload)
+    else:
+        # Service type is not a valid int, throw exception
+        raise ValueError ("Service type {v} is outside of expected range.".format (v = service_type))
+
     # Packet Schema:
     #    Version        (1 byte)
     #    Header Length  (1 byte)
     #    Service Type   (1 byte)
     #    Payload Length (2 bytes)
-    #    Padding        (n bytes)
+    #    Padding        (n* bytes)
+    # * Defined by the header size specified as an argument
+    # BUG: Extra bytes getting added to payload, smthn to do w/ improper data sizes
     encode_str = "BBBh"
     while (len (encode_str) < header_length): # Pad to get header to expected size
         encode_str = encode_str + 'x'
-    packet = struct.pack (encode_str, version, header_length, service_type, len (payload)) # TODO: change len(payload) based on data being sent
-    # TODO: payload -> variable length
+    packet = struct.pack (encode_str, version, header_length, service_type, payload_size)
     # TODO: depending on the service type, handle encoding of the different types of  payload.
     # TODO: service_type 1 = payload is int, service_type 2 = payload is float, service_type 3 = payload is string
 
     return packet
+
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description="Client for packet creation and sending.")
@@ -34,11 +54,19 @@ if __name__ == '__main__':
 
     args = parser.parse_args()
 
-    # TODO: Create and send packet using the create_packet function
-    packet = create_packet(args.version, args.header_length, args.service_type, args.payload)
+    # Create a packet for transferring
+    try:
+        packet = create_packet(args.version, args.header_length, args.service_type, args.payload)
+    except ValueError as bad_value:
+        print (bad_value)
+        print ("Service Types: 1 = int, 2 = float, 3 = string")
+        exit(1)
+    
+    print (packet)
+    print (len (packet))
 
-    # Connect to server
-    try: # Attempt socket creation and connecting to given host
+    # Attempt socket creation and connection to given host
+    try:
         client_socket = socket.socket()
         client_socket.connect ((args.host, args.port))
     except ConnectionRefusedError:
