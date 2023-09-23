@@ -1,18 +1,28 @@
 import socket
 import struct
 
-def unpack_packet(conn, header_format):
+
+# Constants for program-wide usage
+# Service Types
+ST_INT = 1
+ST_FLOAT = 2
+ST_STR = 3
+
+
+def unpack_packet(conn: socket.socket, header_format):
     # TODO: Implement header unpacking based on received bytes
     # TODO: Create a string from the header fields
+    packet_header_as_string: str = ""
     # return the string - this will be the payload
     return packet_header_as_string
+
 
 if __name__ == '__main__':
     host = 'localhost'
     port = 12345
 
     # Fixed length header -> Version (1 byte), Header Length (1 byte), Service Type (1 byte), Payload Length (2 bytes)
-    header_format = ''  # TODO: Specify the header format using "struct"
+    header_format = "BBBh"
 
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
         s.bind((host, port))
@@ -22,7 +32,6 @@ if __name__ == '__main__':
             print(f"Connected by: {addr}")
             while True:
                 try:
-                    # TODO: Receive and unpack packet using the unpack_packet function
                     payload_string = unpack_packet(conn, header_format)
                     pass
                 except:

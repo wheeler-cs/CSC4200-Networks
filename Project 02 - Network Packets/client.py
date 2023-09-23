@@ -4,6 +4,9 @@ import struct
 
 
 # Constants for program-wide usage
+# Header Info
+MIN_HEADER_LEN = 6
+
 # Service Types
 ST_INT   = 1
 ST_FLOAT = 2
@@ -16,7 +19,7 @@ def create_packet (version: int, header_length: int, service_type: int, payload:
     #    1 = int    (4 bytes)
     #    2 = float  (4 bytes)
     #    3 = string (variable length)
-    payload_size = 0
+    payload_size: int = 0
     if (service_type == ST_INT) or (service_type == ST_FLOAT):
         payload_size = 4
     elif (service_type == ST_STR):
@@ -24,6 +27,11 @@ def create_packet (version: int, header_length: int, service_type: int, payload:
     else:
         # Service type is not a valid int, throw exception
         raise ValueError ("Service type {v} is outside of expected range.".format (v = service_type))
+    
+    # With the current schema (see below) header must be AT LEAST 6 bytes in length. Throw an error
+    # if the size specified is below this.
+    if (header_length < MIN_HEADER_LEN):
+        raise ValueError ("Header size specified does not meet minimum requirements (x >= {n}).".format (n = MIN_HEADER_LEN))
 
     # Packet Schema:
     #    Version        (1 byte)
@@ -31,15 +39,26 @@ def create_packet (version: int, header_length: int, service_type: int, payload:
     #    Service Type   (1 byte)
     #    Payload Length (2 bytes)
     #    Padding        (n* bytes)
-    # * Defined by the header size specified as an argument
-    # BUG: Extra bytes getting added to payload, smthn to do w/ improper data sizes
-    encode_str = "BBBh"
-    while (len (encode_str) < header_length): # Pad to get header to expected size
-        encode_str = encode_str + 'x'
-    packet = struct.pack (encode_str, version, header_length, service_type, payload_size)
-    # TODO: depending on the service type, handle encoding of the different types of  payload.
-    # TODO: service_type 1 = payload is int, service_type 2 = payload is float, service_type 3 = payload is string
+    #    NULL - 0x00    (1 byte), appended by struct.pack operation
+    # * Affected by the header size given to the function.
+    encoder_str = "BBBh" + ('x' * ((header_length - 1) - 5))
+    packet = struct.pack (encoder_str, version, header_length, service_type, payload_size)
 
+    # TODO: depending on the service type, handle encoding of the different types of  payload.
+    encoded_payload = None
+    if (service_type == ST_INT):
+        # BUG: Need to get actual binary data instead of a string representing the bin data.
+        encoded_payload = format (int(payload), "08b")
+        pass
+    elif (service_type == ST_FLOAT):
+        pass
+    elif (service_type == ST_STR):
+        # TODO: Make sure chars are 8 bits when encoded
+        encoded_payload = payload.encode ("utf-8")
+
+    # Append packet data to end of header and return whole thing
+    print (encoded_payload)
+    packet = packet + encoded_payload
     return packet
 
 
@@ -59,11 +78,9 @@ if __name__ == '__main__':
         packet = create_packet(args.version, args.header_length, args.service_type, args.payload)
     except ValueError as bad_value:
         print (bad_value)
-        print ("Service Types: 1 = int, 2 = float, 3 = string")
         exit(1)
     
     print (packet)
-    print (len (packet))
 
     # Attempt socket creation and connection to given host
     try:
