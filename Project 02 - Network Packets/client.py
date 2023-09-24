@@ -5,7 +5,7 @@ import struct
 
 # Constants for program-wide usage
 # Header Info
-MIN_HEADER_LEN = 6
+MIN_HEADER_LEN = 5
 
 # Service Types
 ST_INT   = 1
@@ -24,45 +24,40 @@ def create_packet (version: int, header_length: int, service_type: int, payload:
         payload_size = 4
     elif (service_type == ST_STR):
         payload_size = len (payload)
-    else:
-        # Service type is not a valid int, throw exception
+    else: # Service type is not a valid int, throw exception
         raise ValueError ("Service type {v} is outside of expected range.".format (v = service_type))
-    
-    # With the current schema (see below) header must be AT LEAST 6 bytes in length. Throw an error
+    # With the current schema (see below) header must be AT LEAST 5 bytes in length. Throw an error
     # if the size specified is below this.
     if (header_length < MIN_HEADER_LEN):
         raise ValueError ("Header size specified does not meet minimum requirements (x >= {n}).".format (n = MIN_HEADER_LEN))
-
     # Packet Schema:
+    # Uses big (network) endian
     #    Version        (1 byte)
     #    Header Length  (1 byte)
     #    Service Type   (1 byte)
     #    Payload Length (2 bytes)
-    #    Padding        (n* bytes)
-    #    NULL - 0x00    (1 byte), appended by struct.pack operation
+    #    Padding        (n bytes)*
+    #    Payload        (Size Varies)
     # * Affected by the header size given to the function.
-    encoder_str = "BBBh" + ('x' * ((header_length - 1) - 5))
-    packet = struct.pack (encoder_str, version, header_length, service_type, payload_size)
-
-    # TODO: depending on the service type, handle encoding of the different types of  payload.
-    encoded_payload = None
+    # Pad NULL values (if applicable)
+    encoder_str = "!ccch" + ('x' * (header_length - 5))
+    # Add service type to encoder and cast payload to proper data type
     if (service_type == ST_INT):
-        # BUG: Need to get actual binary data instead of a string representing the bin data.
-        encoded_payload = format (int(payload), "08b")
-        pass
+        encoder_str = encoder_str + 'i'
+        payload = int (payload)
     elif (service_type == ST_FLOAT):
-        pass
+        encoder_str = encoder_str + 'f'
+        payload = float (payload)
     elif (service_type == ST_STR):
-        # TODO: Make sure chars are 8 bits when encoded
-        encoded_payload = payload.encode ("utf-8")
-
-    # Append packet data to end of header and return whole thing
-    print (encoded_payload)
-    packet = packet + encoded_payload
+        encoder_str = encoder_str + str (len (payload)) + 's'
+        payload = bytes (payload, 'utf-8')
+    # Pack header and payload into single binary entity
+    packet = struct.pack (encoder_str, bytes ([version]), bytes ([header_length]), bytes ([service_type]), payload_size, payload)
     return packet
 
 
 if __name__ == '__main__':
+    # Setup command line arguments, and specify which are required
     parser = argparse.ArgumentParser(description="Client for packet creation and sending.")
     parser.add_argument('--version', type=int, required=True, help='Packet version')
     parser.add_argument('--header_length', type=int, required=True, help='Length of the packet header')
@@ -78,9 +73,11 @@ if __name__ == '__main__':
         packet = create_packet(args.version, args.header_length, args.service_type, args.payload)
     except ValueError as bad_value:
         print (bad_value)
-        exit(1)
-    
-    print (packet)
+        exit (1)
+    except Exception as unhandled_e:
+        print ("While creating a packet for tranmission, an unhandled error occurred.")
+        print (unhandled_e)
+        exit (1)
 
     # Attempt socket creation and connection to given host
     try:
@@ -93,8 +90,12 @@ if __name__ == '__main__':
         print ("Undefined error with host {h}:{p}".format (h = args.host, p = args.port))
         exit(1)
 
-
-    #TODO: send the packet
+    # Send packet to remote host
+    try:
+        client_socket.sendall (packet)
+    except Exception as send_e:
+        print ("Unable to send packet to remote host")
+        exit (1)
 
     #TODO: recive the packet 
     
