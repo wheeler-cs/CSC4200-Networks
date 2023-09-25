@@ -19,7 +19,6 @@ ST_STR = 3
 def unpack_packet(conn: socket.socket, header_format: str) -> (str, str):
     # Receive first portion of packet
     client_packet = conn.recv (CONN_TRANS_SIZE)
-    print (client_packet)
     # Unpack packet and store header info
     ver, h_len, s_type, p_len = struct.unpack (header_format, client_packet[:5])
     packet_header_str: str = ("Version: " + str (int.from_bytes (ver, "big")) +
@@ -55,8 +54,12 @@ if __name__ == '__main__':
             while True:
                 try:
                     packet_header, payload_string = unpack_packet (conn, header_format)
-                    print (packet_header)
-                    print ("Payload Received:\n" + (payload_string))
+                    if (packet_header is not None):
+                        print (packet_header)
+                        print ("Payload Received:\n" + (payload_string))
+                except ConnectionError as ce:
+                    print (ce)
+                    print ("Client disconnected")
                 except Exception as e:
                     print (e)
                     print("Connection closed or an error occurred")
