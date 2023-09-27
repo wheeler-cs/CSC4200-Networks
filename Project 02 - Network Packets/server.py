@@ -8,7 +8,7 @@ from math import ceil
 MIN_HEADER_SIZE = 5
 
 # Network Transmission Info
-CONN_TRANS_SIZE = 2048
+CONN_TRANS_SIZE = 512
 
 # Service Types
 ST_INT = 1
@@ -39,16 +39,19 @@ def unpack_packet(conn: socket.socket, header_format: str):
         payload = int.from_bytes (raw_payload, "big")
     elif (s_type == ST_FLOAT):
         payload = struct.unpack ("!f", raw_payload)
+        payload = payload[0] # Payload is a tuple, get 1st elem
     elif (s_type == ST_STR):
         payload = raw_payload.decode ("utf-8")
+        # Strings can have more data than a single transfer can handle
+        if (p_len > CONN_TRANS_SIZE):
+            recv_rounds = ceil (((p_len - h_len) / CONN_TRANS_SIZE)) - 1
+            print ("Receive Rounds ", str(recv_rounds))
+            for count in range (0, recv_rounds):
+                print (count)
+                raw_payload = conn.recv (CONN_TRANS_SIZE)
+                payload = payload + (raw_payload.decode ("utf-8"))
 
-    print (payload)
-    exit(22)
-
-    payload = ""
-
-
-
+    print ("Packet Received")
     # return the string - this will be the payload
     return (packet_header_str, payload)
 
@@ -87,9 +90,15 @@ if __name__ == '__main__':
                     break
 
 
+            packet = 5
              #TODO: create header
 
              #TODO: add payload
 
              #TODO: send to client
+            try:
+                conn.send (packet)
+            except ConnectionError or ConnectionRefusedError:
+                pass
+
 

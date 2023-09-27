@@ -7,6 +7,9 @@ import struct
 # Header Info
 MIN_HEADER_LEN = 5
 
+# Network Transmission Info
+CONN_TRANS_SIZE = 2048
+
 # Service Types
 ST_INT   = 1
 ST_FLOAT = 2
@@ -85,19 +88,32 @@ if __name__ == '__main__':
         client_socket.connect ((args.host, args.port))
     except ConnectionRefusedError:
         print ("Host {h}:{p} is unreachable".format (h = args.host, p = args.port))
+        client_socket.close()
         exit (1)
     except:
         print ("Undefined error with host {h}:{p}".format (h = args.host, p = args.port))
-        exit(1)
+        client_socket.close()
+        exit (1)
 
     # Send packet to remote host
     try:
         client_socket.sendall (packet)
+    except ConnectionRefusedError:
+        print ("Connection to remote host interrupted.")
+        client_socket.close()
+        exit (1)
+    except ConnectionResetError:
+        print ("Remote host disconnected.")
+        client_socket.close()
+        exit (1)
     except Exception as send_e:
         print ("Unable to send packet to remote host")
+        client_socket.close()
         exit (1)
 
-    #TODO: recive the packet 
+    # Receive new packet from server
+    server_packet = client_socket.recv (CONN_TRANS_SIZE)
+    client_socket.close() # Done w/ transmission, close socket conn
     
     #TODO: prints header     
     
