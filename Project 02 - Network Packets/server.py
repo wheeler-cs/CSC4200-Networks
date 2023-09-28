@@ -25,11 +25,12 @@ def unpack_packet(conn: socket.socket, header_format: str):
     ver = int.from_bytes (ver, "big")
     h_len = int.from_bytes (h_len, "big")
     s_type = int.from_bytes (s_type, "big")
-    # Print header info
-    packet_header_str: str = ("Version: " + str (ver) +
-                              "\nHeader Len: " + str (h_len) +
-                              "\nService Type: " + str (s_type) +
-                              "\nPayload Length: " + str (p_len))
+    # Create header as dictionary
+    packet_header = {"version": ver,
+                     "h_length": h_len,
+                     "service": s_type,
+                     "p_length": p_len}
+
     # Get part of payload that was received w/ header
     raw_payload = client_packet[(h_len):]
     payload = None
@@ -45,15 +46,14 @@ def unpack_packet(conn: socket.socket, header_format: str):
         # Strings can have more data than a single transfer can handle
         if (p_len > CONN_TRANS_SIZE):
             recv_rounds = ceil (((p_len - h_len) / CONN_TRANS_SIZE)) - 1
-            print ("Receive Rounds ", str(recv_rounds))
             for count in range (0, recv_rounds):
-                print (count)
                 raw_payload = conn.recv (CONN_TRANS_SIZE)
                 payload = payload + (raw_payload.decode ("utf-8"))
 
     print ("Packet Received")
+    packet_header["payload"] = payload
     # return the string - this will be the payload
-    return (packet_header_str, payload)
+    return packet_header
 
 
 if __name__ == '__main__':
@@ -76,10 +76,13 @@ if __name__ == '__main__':
             print(f"Connected by: {addr}")
             while True:
                 try:
-                    packet_header, payload_string = unpack_packet (conn, header_format)
-                    if (packet_header is not None):
-                        print (packet_header)
-                        print ("Payload Received:\n" + (payload_string))
+                    packet_header = unpack_packet (conn, header_format)
+                    print ("Version:", packet_header["version"])
+                    print ("Header Size:", packet_header["h_length"])
+                    print ("Service Type:", packet_header["service"])
+                    print ("Payload Size:", packet_header["p_length"])
+                    print ("Payload:")
+                    print (packet_header["payload"])
                 except ConnectionError or ConnectionResetError as ce:
                     print (ce)
                     print ("Client disconnected")
@@ -90,8 +93,8 @@ if __name__ == '__main__':
                     break
 
 
-            packet = 5
-             #TODO: create header
+            packet = None
+            # Reconstruct header from data sent by client
 
              #TODO: add payload
 
