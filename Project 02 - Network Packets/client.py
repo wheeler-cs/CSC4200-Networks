@@ -115,6 +115,23 @@ if __name__ == '__main__':
     server_packet = client_socket.recv (CONN_TRANS_SIZE)
     client_socket.close() # Done w/ transmission, close socket conn
     
-    #TODO: prints header     
-    
-    #TODO: prints payload
+    # Print header of received packet
+    encoder_str = "!ccch" + ('x' * (args.header_length - 5))
+    if args.service_type == ST_INT:
+        encoder_str = encoder_str + 'i'
+    elif args.service_type == ST_FLOAT:
+        encoder_str = encoder_str + 'f'
+    elif args.service_type == ST_STR:
+        encoder_str = encoder_str + 's'
+    ver, h_len, s_type, p_len, payload = struct.unpack (encoder_str, server_packet)
+    ver = int.from_bytes (ver, "big")
+    h_len = int.from_bytes (h_len, "big")
+    s_type = int.from_bytes (s_type, "big")
+    print ("=== Returned Info ===")
+    print ("Version:", ver)
+    print ("Header Length:", h_len, "bytes")
+    print ("Service Type:", s_type)
+    print ("Payload Size:", p_len, "bytes")
+
+    # Print payload of received packet
+    print (payload)

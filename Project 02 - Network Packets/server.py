@@ -19,6 +19,8 @@ ST_STR = 3
 def unpack_packet(conn: socket.socket, header_format: str):
     # Receive first portion of packet
     client_packet = conn.recv (CONN_TRANS_SIZE)
+    if not client_packet:
+        return None
     # Unpack packet and store header info
     ver, h_len, s_type, p_len = struct.unpack (header_format, client_packet[:MIN_HEADER_SIZE])
     # Convert bin data to integers
@@ -77,6 +79,8 @@ if __name__ == '__main__':
             while True:
                 try:
                     packet_header = unpack_packet (conn, header_format)
+                    if packet_header is None:
+                        break
                     print ("Version:", packet_header["version"])
                     print ("Header Size:", packet_header["h_length"])
                     print ("Service Type:", packet_header["service"])
@@ -93,15 +97,26 @@ if __name__ == '__main__':
                     break
 
 
-            packet = None
-            # Reconstruct header from data sent by client
+                packet = None
+                # Reconstruct header from data sent by client and append payload
+                encoder_str = "!ccch" + ('x' * (packet_header["h_length"] - 5))
+                if (packet_header["service"] == ST_INT):
+                    encoder_str = encoder_str + 'i'
+                elif (packet_header["service"] == ST_FLOAT):
+                    encoder_str = encoder_str + 'f'
+                elif (packet_header["service"] == ST_STR):
+                    encoder_str = encoder_str + str (len (packet_header))+ 's'
+                    packet_header["payload"] = bytes (packet_header["payload"], "utf-8")
+                packet = struct.pack (encoder_str,
+                                      bytes ([packet_header["version"]]),
+                                      bytes ([packet_header["h_length"]]),
+                                      bytes ([packet_header["service"]]),
+                                      packet_header["p_length"],
+                                      packet_header["payload"])
 
-             #TODO: add payload
-
-             #TODO: send to client
-            try:
-                conn.send (packet)
-            except ConnectionError or ConnectionRefusedError:
-                pass
-
-
+                # Send reconstructed packet back to cient
+                try:
+                    conn.send (packet)
+                except ConnectionError or ConnectionRefusedError:
+                    print ("Unable to send packet back to client!")
+                    conn.close()
