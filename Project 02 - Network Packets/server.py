@@ -68,52 +68,53 @@ if __name__ == '__main__':
     header_format = "!ccch"
 
     print ("[Packet Server Started]")
-    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
-        s.bind((host, port))
-        s.listen()
-        conn, addr = s.accept()
-        with conn:
-            print(f"Connected by: {addr}")
-            while True:
-                try:
-                    # Get the packet sent by client
-                    packet_header = unpack_packet (conn, header_format)
-                    if packet_header is None:
+    while True:
+        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+            s.bind((host, port))
+            s.listen()
+            conn, addr = s.accept()
+            with conn:
+                print (f"Connected by: {addr}")
+                while conn:
+                    try:
+                        # Get the packet sent by client
+                        packet_header = unpack_packet (conn, header_format)
+                        if packet_header is None:
+                            break
+                        # Print packet data out
+                        print ("Version:", packet_header["version"])
+                        print ("Header Size:", packet_header["h_length"])
+                        print ("Service Type:", packet_header["service"])
+                        print ("Payload Size:", packet_header["p_length"])
+                        print ("Payload:")
+                        print (packet_header["payload"])
+                    except ConnectionError or ConnectionResetError as ce:
+                        print (ce)
+                        print ("Client disconnected")
                         break
-                    # Print packet data out
-                    print ("Version:", packet_header["version"])
-                    print ("Header Size:", packet_header["h_length"])
-                    print ("Service Type:", packet_header["service"])
-                    print ("Payload Size:", packet_header["p_length"])
-                    print ("Payload:")
-                    print (packet_header["payload"])
-                except ConnectionError or ConnectionResetError as ce:
-                    print (ce)
-                    print ("Client disconnected")
-                    break
-                except Exception as e:
-                    print (e)
-                    print("Connection closed or an error occurred")
-                    break
-                packet = None
-                # Reconstruct packet from data sent by client and append payload
-                encoder_str = "!ccch" + ('x' * (packet_header["h_length"] - 5))
-                if (packet_header["service"] == ST_INT):
-                    encoder_str = encoder_str + 'i'
-                elif (packet_header["service"] == ST_FLOAT):
-                    encoder_str = encoder_str + 'f'
-                elif (packet_header["service"] == ST_STR):
-                    encoder_str = encoder_str + str (len (packet_header["payload"]))+ 's'
-                    packet_header["payload"] = bytes (packet_header["payload"], "utf-8")
-                packet = struct.pack (encoder_str,
-                                      bytes ([packet_header["version"]]),
-                                      bytes ([packet_header["h_length"]]),
-                                      bytes ([packet_header["service"]]),
-                                      packet_header["p_length"],
-                                      packet_header["payload"])
-                # Send reconstructed packet back to cient
-                try:
-                    conn.send (packet)
-                except ConnectionError or ConnectionRefusedError:
-                    print ("Unable to send packet back to client!")
-                    conn.close()
+                    except Exception as e:
+                        print (e)
+                        print("Connection closed or an error occurred")
+                        break
+                    packet = None
+                    # Reconstruct packet from data sent by client and append payload
+                    encoder_str = "!ccch" + ('x' * (packet_header["h_length"] - 5))
+                    if (packet_header["service"] == ST_INT):
+                        encoder_str = encoder_str + 'i'
+                    elif (packet_header["service"] == ST_FLOAT):
+                        encoder_str = encoder_str + 'f'
+                    elif (packet_header["service"] == ST_STR):
+                        encoder_str = encoder_str + str (len (packet_header["payload"]))+ 's'
+                        packet_header["payload"] = bytes (packet_header["payload"], "utf-8")
+                    packet = struct.pack (encoder_str,
+                                          bytes ([packet_header["version"]]),
+                                          bytes ([packet_header["h_length"]]),
+                                          bytes ([packet_header["service"]]),
+                                          packet_header["p_length"],
+                                          packet_header["payload"])
+                    # Send reconstructed packet back to cient
+                    try:
+                        conn.send (packet)
+                    except ConnectionError or ConnectionRefusedError:
+                        print ("Unable to send packet back to client!")
+                        break
