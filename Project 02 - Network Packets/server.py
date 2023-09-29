@@ -32,12 +32,10 @@ def unpack_packet(conn: socket.socket, header_format: str):
                      "h_length": h_len,
                      "service": s_type,
                      "p_length": p_len}
-
     # Get part of payload that was received w/ header
     raw_payload = client_packet[(h_len):]
     payload = None
-
-    # Figure out how much data is extracted due to service type
+    # Figure out how much data is extracted baed on service type
     if (s_type == ST_INT):
         payload = int.from_bytes (raw_payload, "big")
     elif (s_type == ST_FLOAT):
@@ -48,10 +46,10 @@ def unpack_packet(conn: socket.socket, header_format: str):
         # Strings can have more data than a single transfer can handle
         if (p_len > CONN_TRANS_SIZE):
             recv_rounds = ceil (((p_len - h_len) / CONN_TRANS_SIZE)) - 1
-            for count in range (0, recv_rounds):
+            for count in range (0, recv_rounds): # count is a dummy var
                 raw_payload = conn.recv (CONN_TRANS_SIZE)
                 payload = payload + (raw_payload.decode ("utf-8"))
-
+    # Notify that the packet was received
     print ("Packet Received")
     packet_header["payload"] = payload
     # return the string - this will be the payload
@@ -78,9 +76,11 @@ if __name__ == '__main__':
             print(f"Connected by: {addr}")
             while True:
                 try:
+                    # Get the packet sent by client
                     packet_header = unpack_packet (conn, header_format)
                     if packet_header is None:
                         break
+                    # Print packet data out
                     print ("Version:", packet_header["version"])
                     print ("Header Size:", packet_header["h_length"])
                     print ("Service Type:", packet_header["service"])
@@ -95,17 +95,15 @@ if __name__ == '__main__':
                     print (e)
                     print("Connection closed or an error occurred")
                     break
-
-
                 packet = None
-                # Reconstruct header from data sent by client and append payload
+                # Reconstruct packet from data sent by client and append payload
                 encoder_str = "!ccch" + ('x' * (packet_header["h_length"] - 5))
                 if (packet_header["service"] == ST_INT):
                     encoder_str = encoder_str + 'i'
                 elif (packet_header["service"] == ST_FLOAT):
                     encoder_str = encoder_str + 'f'
                 elif (packet_header["service"] == ST_STR):
-                    encoder_str = encoder_str + str (len (packet_header))+ 's'
+                    encoder_str = encoder_str + str (len (packet_header["payload"]))+ 's'
                     packet_header["payload"] = bytes (packet_header["payload"], "utf-8")
                 packet = struct.pack (encoder_str,
                                       bytes ([packet_header["version"]]),
@@ -113,7 +111,6 @@ if __name__ == '__main__':
                                       bytes ([packet_header["service"]]),
                                       packet_header["p_length"],
                                       packet_header["payload"])
-
                 # Send reconstructed packet back to cient
                 try:
                     conn.send (packet)

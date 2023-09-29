@@ -2,6 +2,8 @@ import argparse
 import socket
 import struct
 
+from math import ceil
+
 
 # Constants for program-wide usage
 # Header Info
@@ -112,21 +114,36 @@ if __name__ == '__main__':
         exit (1)
 
     # Receive new packet from server
-    server_packet = client_socket.recv (CONN_TRANS_SIZE)
+    try:
+        server_packet = client_socket.recv (CONN_TRANS_SIZE)
+    except ConnectionResetError:
+        print ("Remove host disconnected")
+        client_socket.close()
+        exit (1)
     client_socket.close() # Done w/ transmission, close socket conn
-    
-    # Print header of received packet
+    # Unpack struct and cast data to needed types    
     encoder_str = "!ccch" + ('x' * (args.header_length - 5))
-    if args.service_type == ST_INT:
-        encoder_str = encoder_str + 'i'
-    elif args.service_type == ST_FLOAT:
-        encoder_str = encoder_str + 'f'
-    elif args.service_type == ST_STR:
-        encoder_str = encoder_str + 's'
-    ver, h_len, s_type, p_len, payload = struct.unpack (encoder_str, server_packet)
+    ver, h_len, s_type, p_len = struct.unpack (encoder_str, server_packet[:args.header_length])
     ver = int.from_bytes (ver, "big")
     h_len = int.from_bytes (h_len, "big")
     s_type = int.from_bytes (s_type, "big")
+    # Handle data that came in with header
+    raw_payload = server_packet[args.header_length:]
+    payload = ""
+    if (s_type == ST_INT): # Ints can be converted from raw data
+        payload = int.from_bytes (raw_payload, "big")
+    elif (s_type == ST_FLOAT): # Floats have to be unpacked
+        payload = struct.unpack ("!f", raw_payload)
+        payload = payload[0]
+    elif (s_type == ST_STR): # Strings are decoded and may have more parts recv
+        payload = raw_payload.decode ("utf-8")
+        # Handle extra data for strings
+        if (p_len > CONN_TRANS_SIZE):
+            recv_rounds = ceil (((p_len - h_len) / CONN_TRANS_SIZE)) - 1
+            for count in range (0, recv_rounds):
+                raw_payload = client_socket.recv (CONN_TRANS_SIZE)
+                payload = payload + (raw_payload.decode ("utf-8"))
+    # Print packet header info
     print ("=== Returned Info ===")
     print ("Version:", ver)
     print ("Header Length:", h_len, "bytes")
